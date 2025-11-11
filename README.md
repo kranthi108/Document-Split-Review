@@ -99,3 +99,12 @@ POST /api/pages/move
 
 ### Postman
 A Postman collection is included at project root: `ascend-doc-split-review.postman_collection.json`. Import it and set the `base_url` (default `http://localhost:8080`) and `token` variables.
+
+### Seeded demo data
+- User: username `demo`, password `password`
+- On startup, one split is created with two documents:
+  - `Form 80C` (classification `80C`) with pages 1-2
+  - `Form 80D` (classification `80D`) with page 3
+- IDs are assigned at runtime; to find exact IDs:
+  - Check application logs on startup (seed logs print ids), or
+  - Use H2 console: run `SELECT id FROM splits;` and `SELECT id, split_id, name FROM documents;`
