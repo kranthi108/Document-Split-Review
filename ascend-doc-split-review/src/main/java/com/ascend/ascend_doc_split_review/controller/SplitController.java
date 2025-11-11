@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 
@@ -49,10 +51,14 @@ public class SplitController {
     @Autowired
     private MockDownloadService mockDownloadService;
 
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     @GetMapping("/splits/{splitId}")
     public ResponseEntity<SplitResponse> getSplit(@PathVariable Long splitId, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
         logger.info("User {} requesting split {}", userPrincipal.getUsername(), splitId);
+        meterRegistry.counter("api.split.get").increment();
         Optional<Split> splitOpt = splitService.getSplitById(splitId);
         if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
             logger.info("Split {} retrieved successfully", splitId);
@@ -63,16 +69,18 @@ public class SplitController {
     }
 
     @PatchMapping("/documents/{id}")
-    public ResponseEntity<DocumentResponse> updateDocument(@PathVariable Long id, @RequestBody UpdateDocumentRequest request, Authentication auth) {
+    public ResponseEntity<DocumentResponse> updateDocument(@PathVariable Long id, @Valid @RequestBody UpdateDocumentRequest request, Authentication auth) {
         // Assuming authorization check - user owns the split
+        meterRegistry.counter("api.document.update").increment();
         Document updated = documentService.updateDocument(id, request.getName(), request.getClassification(), request.getFilename());
         return ResponseEntity.ok(DocumentResponse.fromEntity(updated));
     }
 
     @PostMapping("/pages/move")
-    public ResponseEntity<?> movePages(@RequestBody MovePagesRequest request, Authentication auth) {
+    public ResponseEntity<?> movePages(@Valid @RequestBody MovePagesRequest request, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
         logger.info("User {} moving pages {} to document {}", userPrincipal.getUsername(), request.getPageIds(), request.getTargetDocumentId());
+        meterRegistry.counter("api.pages.move").increment();
         Optional<Document> targetDocOpt = documentRepository.findById(request.getTargetDocumentId());
         if (targetDocOpt.isPresent()) {
             pageService.movePagesToDocument(request.getPageIds(), targetDocOpt.get());
@@ -84,8 +92,9 @@ public class SplitController {
     }
 
     @PostMapping("/documents")
-    public ResponseEntity<DocumentResponse> createDocument(@RequestBody CreateDocumentRequest request, Authentication auth) {
+    public ResponseEntity<DocumentResponse> createDocument(@Valid @RequestBody CreateDocumentRequest request, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        meterRegistry.counter("api.document.create").increment();
         Optional<Split> splitOpt = splitRepository.findById(request.getSplitId());
         if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
             List<Page> pages = pageRepository.findByIdIn(request.getPageIds());
@@ -96,14 +105,16 @@ public class SplitController {
     }
 
     @DeleteMapping("/documents/{id}")
-    public ResponseEntity<?> deleteDocument(@PathVariable Long id, Authentication auth) {
-        documentService.deleteDocument(id);
+    public ResponseEntity<?> deleteDocument(@PathVariable Long id, @RequestParam(value = "reassignTo", required = false) Long reassignTo, Authentication auth) {
+        meterRegistry.counter("api.document.delete").increment();
+        documentService.deleteDocument(id, reassignTo);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/splits/{splitId}/finalize")
     public ResponseEntity<SplitResponse> finalizeSplit(@PathVariable Long splitId, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        meterRegistry.counter("api.split.finalize").increment();
         Optional<Split> splitOpt = splitRepository.findById(splitId);
         if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
             Split finalized = splitService.finalizeSplit(splitId);
@@ -116,6 +127,7 @@ public class SplitController {
     public ResponseEntity<byte[]> downloadDocument(@PathVariable Long id, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
         logger.info("User {} downloading document {}", userPrincipal.getUsername(), id);
+        meterRegistry.counter("api.document.download").increment();
         byte[] pdfContent = mockDownloadService.getMockFile(id);
         return ResponseEntity.ok()
                 .header("Content-Type", "application/pdf")

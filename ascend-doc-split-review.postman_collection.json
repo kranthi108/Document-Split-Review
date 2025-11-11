@@ -1,0 +1,131 @@
+{
+  "info": {
+    "name": "Ascend Doc Split Review",
+    "_postman_id": "0f1a1e2b-3c4d-5e6f-7890-abcde1234567",
+    "description": "Postman collection for the Document Split + Review backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "split_id", "value": "1" },
+    { "key": "document_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api", "auth", "register"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"password\",\n  \"email\": \"user1@example.com\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [ { "key": "Content-Type", "value": "application/json" } ],
+        "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"password\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Splits - Get Split",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/api/splits/{{split_id}}", "host": ["{{base_url}}"], "path": ["api", "splits", "{{split_id}}"] }
+      }
+    },
+    {
+      "name": "Documents - Create",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/api/documents", "host": ["{{base_url}}"], "path": ["api", "documents"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"splitId\": {{split_id}},\n  \"name\": \"Form 80C\",\n  \"classification\": \"80C\",\n  \"filename\": \"client_80c.pdf\",\n  \"pageIds\": [1,2]\n}"
+        }
+      }
+    },
+    {
+      "name": "Documents - Update",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/api/documents/{{document_id}}", "host": ["{{base_url}}"], "path": ["api", "documents", "{{document_id}}"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Form 80D\",\n  \"classification\": \"80D\",\n  \"filename\": \"client_80d.pdf\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Pages - Move",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "url": { "raw": "{{base_url}}/api/pages/move", "host": ["{{base_url}}"], "path": ["api", "pages", "move"] },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pageIds\": [3,4],\n  \"targetDocumentId\": {{document_id}}\n}"
+        }
+      }
+    },
+    {
+      "name": "Documents - Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/documents/{{document_id}}?reassignTo={{document_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["api","documents","{{document_id}}"],
+          "query": [{ "key": "reassignTo", "value": "{{document_id}}" }]
+        }
+      }
+    },
+    {
+      "name": "Splits - Finalize",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/api/splits/{{split_id}}/finalize", "host": ["{{base_url}}"], "path": ["api", "splits", "{{split_id}}", "finalize"] }
+      }
+    },
+    {
+      "name": "Documents - Download",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" }
+        ],
+        "url": { "raw": "{{base_url}}/api/documents/{{document_id}}/download", "host": ["{{base_url}}"], "path": ["api", "documents", "{{document_id}}", "download"] }
+      }
+    }
+  ]
+}
+

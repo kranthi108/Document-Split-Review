@@ -59,14 +59,26 @@ public class DocumentService {
     }
 
     @Transactional
-    public void deleteDocument(Long id) {
+    public void deleteDocument(Long id, Long reassignToDocumentId) {
         Optional<Document> docOpt = documentRepository.findById(id);
         if (docOpt.isPresent()) {
             Document doc = docOpt.get();
-            // Move pages to null (unassigned)
+            // Move pages either to target document or mark as unassigned (null)
             List<Page> pages = pageRepository.findByDocumentId(id);
+            Document targetDoc = null;
+            if (reassignToDocumentId != null) {
+                if (reassignToDocumentId.equals(id)) {
+                    throw new IllegalArgumentException("Cannot reassign pages to the same document being deleted");
+                }
+                targetDoc = documentRepository.findById(reassignToDocumentId)
+                        .orElseThrow(() -> new IllegalArgumentException("Target document not found: " + reassignToDocumentId));
+                // Optional: ensure targetDoc belongs to same split
+                if (!targetDoc.getSplit().getId().equals(doc.getSplit().getId())) {
+                    throw new IllegalArgumentException("Target document must belong to the same split");
+                }
+            }
             for (Page page : pages) {
-                page.setDocument(null);
+                page.setDocument(targetDoc);
                 pageRepository.save(page);
             }
             documentRepository.delete(doc);
