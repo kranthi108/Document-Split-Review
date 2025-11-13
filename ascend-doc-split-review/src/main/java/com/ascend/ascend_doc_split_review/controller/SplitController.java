@@ -211,4 +211,23 @@ public class SplitController {
                 .header("Content-Disposition", "attachment; filename=\"document_" + id + ".pdf\"")
                 .body(pdfContent);
     }
+
+    @DeleteMapping("/documents/{id}")
+    public ResponseEntity<?> deleteOriginalDocument(@PathVariable Long id, Authentication auth) {
+        UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        meterRegistry.counter("api.document.delete_original").increment();
+        Optional<OriginalDocument> docOpt = originalDocumentRepository.findById(id);
+        if (docOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        OriginalDocument doc = docOpt.get();
+        if (!doc.getUser().getId().equals(userPrincipal.getUser().getId())) {
+            return ResponseEntity.status(403).build();
+        }
+        if (doc.getStatus() == OriginalDocument.Status.FINALIZED) {
+            return ResponseEntity.badRequest().body("Cannot delete a finalized document");
+        }
+        originalDocumentService.deleteOriginalDocument(id);
+        return ResponseEntity.ok().build();
+    }
 }

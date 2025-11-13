@@ -8,6 +8,10 @@ import com.ascend.ascend_doc_split_review.repository.PageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +26,11 @@ public class SplitPartService {
     @Autowired
     private PageRepository pageRepository;
 
+    @Retryable(
+            value = {TransientDataAccessException.class, OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 1000)
+    )
     public SplitPart createSplitPart(OriginalDocument originalDocument, String name, String classification, String filename, List<Page> pages) {
         if (originalDocument.getStatus() == OriginalDocument.Status.FINALIZED) {
             throw new IllegalArgumentException("Cannot modify a finalized document");
@@ -60,6 +69,11 @@ public class SplitPartService {
         return splitPartRepository.findByOriginalDocumentId(originalDocumentId);
     }
 
+    @Retryable(
+            value = {TransientDataAccessException.class, OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 1000)
+    )
     public SplitPart updateSplitPart(Long id, String name, String classification, String filename) {
         Optional<SplitPart> opt = splitPartRepository.findById(id);
         if (opt.isPresent()) {
@@ -80,6 +94,11 @@ public class SplitPartService {
     }
 
     @Transactional
+    @Retryable(
+            value = {TransientDataAccessException.class, OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 1000)
+    )
     public void deleteSplitPart(Long id, Long reassignToSplitPartId) {
         Optional<SplitPart> opt = splitPartRepository.findById(id);
         if (opt.isPresent()) {
@@ -118,6 +137,11 @@ public class SplitPartService {
         }
     }
 
+    @Retryable(
+            value = {TransientDataAccessException.class, OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 1000)
+    )
     public SplitPart finalizeSplitPart(Long id) {
         Optional<SplitPart> opt = splitPartRepository.findById(id);
         if (opt.isPresent()) {

@@ -8,6 +8,10 @@ import com.ascend.ascend_doc_split_review.repository.PageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.util.List;
 import java.util.Map;
@@ -62,6 +66,11 @@ public class PageService {
 
     // Better method
     @Transactional
+    @Retryable(
+            value = {TransientDataAccessException.class, OptimisticLockingFailureException.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 100, multiplier = 2.0, maxDelay = 1000)
+    )
     public void movePagesToSplitPart(List<Long> pageIds, SplitPart targetSplitPart) {
         if (targetSplitPart.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
             throw new IllegalArgumentException("Cannot modify a finalized document");
