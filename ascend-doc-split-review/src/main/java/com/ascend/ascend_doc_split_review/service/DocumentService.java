@@ -23,6 +23,18 @@ public class DocumentService {
     private PageRepository pageRepository;
 
     public Document createDocument(Split split, String name, String classification, String filename, List<Page> pages) {
+        if (split.getStatus() == Split.Status.FINALIZED) {
+            throw new IllegalArgumentException("Cannot modify a finalized split");
+        }
+        // Validate all pages belong to the same split (via their current documents)
+        for (Page page : pages) {
+            if (page.getDocument() == null || page.getDocument().getSplit() == null) {
+                throw new IllegalArgumentException("Page " + page.getId() + " is not assigned to any document");
+            }
+            if (!page.getDocument().getSplit().getId().equals(split.getId())) {
+                throw new IllegalArgumentException("All pages must belong to the same split");
+            }
+        }
         Document document = new Document();
         document.setSplit(split);
         document.setName(name);
@@ -31,6 +43,11 @@ public class DocumentService {
         document.setCreatedAt(LocalDateTime.now());
         document.setUpdatedAt(LocalDateTime.now());
         document.setPages(pages);
+        // Set initial source page range based on provided page numbers
+        int minPage = pages.stream().map(Page::getPageNumber).min(Integer::compareTo).orElse(0);
+        int maxPage = pages.stream().map(Page::getPageNumber).max(Integer::compareTo).orElse(0);
+        document.setSourceFromPage(minPage);
+        document.setSourceToPage(maxPage);
         for (Page page : pages) {
             page.setDocument(document);
         }
@@ -49,6 +66,9 @@ public class DocumentService {
         Optional<Document> docOpt = documentRepository.findById(id);
         if (docOpt.isPresent()) {
             Document doc = docOpt.get();
+            if (doc.getSplit().getStatus() == Split.Status.FINALIZED) {
+                throw new IllegalArgumentException("Cannot modify a finalized split");
+            }
             if (name != null) doc.setName(name);
             if (classification != null) doc.setClassification(classification);
             if (filename != null) doc.setFilename(filename);
@@ -63,6 +83,9 @@ public class DocumentService {
         Optional<Document> docOpt = documentRepository.findById(id);
         if (docOpt.isPresent()) {
             Document doc = docOpt.get();
+            if (doc.getSplit().getStatus() == Split.Status.FINALIZED) {
+                throw new IllegalArgumentException("Cannot modify a finalized split");
+            }
             // Move pages either to target document or mark as unassigned (null)
             List<Page> pages = pageRepository.findByDocumentId(id);
             Document targetDoc = null;
@@ -75,6 +98,9 @@ public class DocumentService {
                 // Optional: ensure targetDoc belongs to same split
                 if (!targetDoc.getSplit().getId().equals(doc.getSplit().getId())) {
                     throw new IllegalArgumentException("Target document must belong to the same split");
+                }
+                if (targetDoc.getSplit().getStatus() == Split.Status.FINALIZED) {
+                    throw new IllegalArgumentException("Cannot modify a finalized split");
                 }
             }
             for (Page page : pages) {

@@ -38,4 +38,11 @@ public class Document {
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Page> pages;
+
+    // Tracks original source page range this document initially represented
+    @Column(name = "source_from_page")
+    private Integer sourceFromPage;
+
+    @Column(name = "source_to_page")
+    private Integer sourceToPage;
 }

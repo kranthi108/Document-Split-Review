@@ -83,7 +83,17 @@ public class SplitController {
         meterRegistry.counter("api.pages.move").increment();
         Optional<Document> targetDocOpt = documentRepository.findById(request.getTargetDocumentId());
         if (targetDocOpt.isPresent()) {
-            pageService.movePagesToDocument(request.getPageIds(), targetDocOpt.get());
+            Document targetDoc = targetDocOpt.get();
+            // Ownership check
+            if (!targetDoc.getSplit().getUser().getId().equals(userPrincipal.getUser().getId())) {
+                logger.warn("Access denied for user {} to target document {}", userPrincipal.getUsername(), targetDoc.getId());
+                return ResponseEntity.status(403).build();
+            }
+            if (targetDoc.getSplit().getStatus() == Split.Status.FINALIZED) {
+                logger.warn("Attempt to modify finalized split {}", targetDoc.getSplit().getId());
+                return ResponseEntity.badRequest().body("Cannot modify a finalized split");
+            }
+            pageService.movePagesToDocument(request.getPageIds(), targetDoc);
             logger.info("Pages moved successfully");
             return ResponseEntity.ok().build();
         }
@@ -97,6 +107,9 @@ public class SplitController {
         meterRegistry.counter("api.document.create").increment();
         Optional<Split> splitOpt = splitRepository.findById(request.getSplitId());
         if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            if (splitOpt.get().getStatus() == Split.Status.FINALIZED) {
+                return ResponseEntity.badRequest().body(null);
+            }
             List<Page> pages = pageRepository.findByIdIn(request.getPageIds());
             Document doc = documentService.createDocument(splitOpt.get(), request.getName(), request.getClassification(), request.getFilename(), pages);
             return ResponseEntity.ok(DocumentResponse.fromEntity(doc));
@@ -107,6 +120,15 @@ public class SplitController {
     @DeleteMapping("/documents/{id}")
     public ResponseEntity<?> deleteDocument(@PathVariable Long id, @RequestParam(value = "reassignTo", required = false) Long reassignTo, Authentication auth) {
         meterRegistry.counter("api.document.delete").increment();
+        UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        Optional<Document> docOpt = documentRepository.findById(id);
+        if (docOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Document doc = docOpt.get();
+        if (!doc.getSplit().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            return ResponseEntity.status(403).build();
+        }
         documentService.deleteDocument(id, reassignTo);
         return ResponseEntity.ok().build();
     }
