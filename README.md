@@ -121,6 +121,9 @@ POST /api/pages/move
   - CreateSplitPartRequest requires `originalDocumentId`, `name`, `classification`, `filename`, and non-empty `pageIds`.
   - MovePagesRequest requires non-empty `pageIds` and `targetSplitPartId`.
   - UpdateSplitPartRequest fields are optional; only provided fields are updated.
+  - Contiguity rule: Moves must keep every split part contiguous by `pageNumber`.
+    - Target split part after adding pages must be contiguous; otherwise request is rejected.
+    - Each source split part after removing pages must be contiguous (or empty); otherwise request is rejected.
 - AuthZ: users can access only their own original documents and split parts.
 - Download API returns a generated mock PDF; content does not map to actual metadata.
 - Finalization rules:

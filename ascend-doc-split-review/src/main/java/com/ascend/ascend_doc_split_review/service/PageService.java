@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +33,31 @@ public class PageService {
 
     public List<Page> getPagesBySplitPart(Long splitPartId) {
         return pageRepository.findBySplitPartId(splitPartId);
+    }
+
+    private void recomputeAndSaveRange(SplitPart splitPart) {
+        List<Page> currentPages = pageRepository.findBySplitPartId(splitPart.getId());
+        if (currentPages.isEmpty()) {
+            splitPart.setFromPage(null);
+            splitPart.setToPage(null);
+        } else {
+            int minPage = currentPages.stream().map(Page::getPageNumber).min(Integer::compareTo).orElse(0);
+            int maxPage = currentPages.stream().map(Page::getPageNumber).max(Integer::compareTo).orElse(0);
+            splitPart.setFromPage(minPage);
+            splitPart.setToPage(maxPage);
+        }
+        splitPartRepository.save(splitPart);
+    }
+
+    private boolean isContiguous(List<Integer> pageNumbers) {
+        if (pageNumbers.isEmpty()) return true;
+        List<Integer> sortedDistinct = pageNumbers.stream().distinct().sorted().toList();
+        for (int i = 1; i < sortedDistinct.size(); i++) {
+            if (sortedDistinct.get(i) - sortedDistinct.get(i - 1) != 1) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Better method
@@ -66,19 +92,49 @@ public class PageService {
                 throw new IllegalArgumentException("Cannot move pages from a finalized split part");
             }
         }
+        // Contiguity validation for target
+        List<Integer> targetExisting = pageRepository.findBySplitPartId(targetSplitPart.getId())
+                .stream().map(Page::getPageNumber).toList();
+        List<Integer> movingNumbers = pages.stream().map(Page::getPageNumber).toList();
+        List<Integer> targetCombined = Stream.concat(targetExisting.stream(), movingNumbers.stream()).toList();
+        if (!isContiguous(targetCombined)) {
+            throw new IllegalArgumentException("Move rejected: target split would become non-contiguous. Include all pages in the range.");
+        }
+        // Contiguity validation for each source after removal
+        for (Map.Entry<SplitPart, List<Page>> entry : bySource.entrySet()) {
+            SplitPart source = entry.getKey();
+            if (source.getId().equals(targetSplitPart.getId())) {
+                // Same split; contiguity already checked via combined set
+                continue;
+            }
+            List<Integer> sourceExisting = pageRepository.findBySplitPartId(source.getId())
+                    .stream().map(Page::getPageNumber).toList();
+            List<Integer> removed = entry.getValue().stream().map(Page::getPageNumber).toList();
+            List<Integer> remaining = sourceExisting.stream()
+                    .filter(n -> !removed.contains(n))
+                    .toList();
+            if (!remaining.isEmpty() && !isContiguous(remaining)) {
+                throw new IllegalArgumentException("Move rejected: source split would become non-contiguous. Move full contiguous ranges.");
+            }
+        }
         // Perform move
         for (Page page : pages) {
             page.setSplitPart(targetSplitPart);
             pageRepository.save(page);
         }
-        // Remove any now-empty source documents
+        // Recompute ranges for affected split parts and remove any now-empty sources
         for (SplitPart source : bySource.keySet()) {
             if (!source.getId().equals(targetSplitPart.getId())) {
-                long remaining = pageRepository.findBySplitPartId(source.getId()).size();
+                List<Page> remainingPages = pageRepository.findBySplitPartId(source.getId());
+                long remaining = remainingPages.size();
                 if (remaining == 0) {
                     splitPartRepository.delete(source);
+                } else {
+                    recomputeAndSaveRange(source);
                 }
             }
         }
+        // Finally, recompute target range after pages have been moved
+        recomputeAndSaveRange(targetSplitPart);
     }
 }
