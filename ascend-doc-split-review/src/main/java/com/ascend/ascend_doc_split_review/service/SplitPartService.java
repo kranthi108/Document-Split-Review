@@ -67,6 +67,9 @@ public class SplitPartService {
             if (sp.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
                 throw new IllegalArgumentException("Cannot modify a finalized document");
             }
+            if (sp.getStatus() == SplitPart.Status.FINALIZED) {
+                throw new IllegalArgumentException("Cannot modify a finalized split part");
+            }
             if (name != null) sp.setName(name);
             if (classification != null) sp.setClassification(classification);
             if (filename != null) sp.setFilename(filename);
@@ -84,6 +87,9 @@ public class SplitPartService {
             if (sp.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
                 throw new IllegalArgumentException("Cannot modify a finalized document");
             }
+            if (sp.getStatus() == SplitPart.Status.FINALIZED) {
+                throw new IllegalArgumentException("Cannot delete a finalized split part");
+            }
             List<Page> pages = pageRepository.findBySplitPartId(id);
             SplitPart target = null;
             if (reassignToSplitPartId != null) {
@@ -98,6 +104,9 @@ public class SplitPartService {
                 if (target.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
                     throw new IllegalArgumentException("Cannot modify a finalized document");
                 }
+                if (target.getStatus() == SplitPart.Status.FINALIZED) {
+                    throw new IllegalArgumentException("Cannot reassign pages to a finalized split part");
+                }
             }
             for (Page page : pages) {
                 page.setSplitPart(target);
@@ -107,6 +116,20 @@ public class SplitPartService {
         } else {
             throw new RuntimeException("Split part not found");
         }
+    }
+
+    public SplitPart finalizeSplitPart(Long id) {
+        Optional<SplitPart> opt = splitPartRepository.findById(id);
+        if (opt.isPresent()) {
+            SplitPart sp = opt.get();
+            if (sp.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
+                return sp; // already effectively locked by parent
+            }
+            sp.setStatus(SplitPart.Status.FINALIZED);
+            sp.setUpdatedAt(LocalDateTime.now());
+            return splitPartRepository.save(sp);
+        }
+        throw new RuntimeException("Split part not found");
     }
 }
 

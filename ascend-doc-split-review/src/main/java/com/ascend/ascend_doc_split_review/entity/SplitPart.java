@@ -36,6 +36,10 @@ public class SplitPart {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.PENDING;
+
     @OneToMany(mappedBy = "splitPart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Page> pages;
 
@@ -44,5 +48,9 @@ public class SplitPart {
 
     @Column(name = "to_page")
     private Integer toPage;
+
+    public enum Status {
+        PENDING, FINALIZED
+    }
 }
 

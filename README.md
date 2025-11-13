@@ -19,11 +19,16 @@ cd ascend-doc-split-review
 
 ### Core APIs
 - GET `/api/documents/{documentId}` → original document with split parts and pages
+- GET `/api/splits/{id}` → alias for fetching an original document (split) by id
 - POST `/api/split-parts` → create a new split part from page IDs of the same original document
+- POST `/api/document` → alias for creating a split part (document) from page IDs
 - PATCH `/api/split-parts/{id}` → update split part metadata
+- PATCH `/api/document/{id}` → alias for updating split part (document) metadata
 - DELETE `/api/split-parts/{id}?reassignTo={splitPartId}` → delete; reassign pages to another split part (same original doc) or mark unassigned
+- DELETE `/api/document/{id}?reassignTo={splitPartId}` → alias for deleting a split part (document)
 - POST `/api/pages/move` → move page IDs to a target split part (must be same original document)
 - POST `/api/documents/{documentId}/finalize` → finalize original document (lock further changes)
+- POST `/api/split-parts/{id}/finalize` → finalize a split part (lock further changes)
 - GET `/api/documents/{id}/download` → mock PDF blob
 
 ### Request/Response Examples
@@ -38,9 +43,29 @@ POST /api/split-parts
   "pageIds": [5,6,7]
 }
 ```
+- Create document (alias):
+```json
+POST /api/document
+{
+  "originalDocumentId": 1,
+  "name": "Form 80C",
+  "classification": "80C",
+  "filename": "client_80c.pdf",
+  "pageIds": [5,6,7]
+}
+```
 - Update split part:
 ```json
 PATCH /api/split-parts/10
+{
+  "name": "Form 80D",
+  "classification": "80D",
+  "filename": "updated_80d.pdf"
+}
+```
+- Update document (alias):
+```json
+PATCH /api/document/10
 {
   "name": "Form 80D",
   "classification": "80D",
@@ -98,6 +123,9 @@ POST /api/pages/move
   - UpdateSplitPartRequest fields are optional; only provided fields are updated.
 - AuthZ: users can access only their own original documents and split parts.
 - Download API returns a generated mock PDF; content does not map to actual metadata.
+- Finalization rules:
+  - When an original document is finalized, no creates/updates/moves/deletes are allowed within it.
+  - When a split part is finalized, it cannot be modified and pages cannot be moved into or out of it.
 
 ### Postman
 A Postman collection is included at project root: `ascend-doc-split-review.postman_collection.json`. Import it and set the `base_url` (default `http://localhost:8080`) and `token` variables.

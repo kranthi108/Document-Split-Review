@@ -40,6 +40,9 @@ public class PageService {
         if (targetSplitPart.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
             throw new IllegalArgumentException("Cannot modify a finalized document");
         }
+        if (targetSplitPart.getStatus() == SplitPart.Status.FINALIZED) {
+            throw new IllegalArgumentException("Cannot move pages into a finalized split part");
+        }
         List<Page> pages = pageRepository.findByIdIn(pageIds);
         if (pages.isEmpty()) {
             return;
@@ -58,6 +61,9 @@ public class PageService {
             }
             if (source.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
                 throw new IllegalArgumentException("Cannot modify a finalized document");
+            }
+            if (source.getStatus() == SplitPart.Status.FINALIZED) {
+                throw new IllegalArgumentException("Cannot move pages from a finalized split part");
             }
         }
         // Perform move

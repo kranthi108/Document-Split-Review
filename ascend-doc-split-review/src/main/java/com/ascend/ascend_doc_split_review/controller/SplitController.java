@@ -54,6 +54,19 @@ public class SplitController {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    // Alias: Get split (original document) by id
+    @GetMapping("/splits/{id}")
+    public ResponseEntity<OriginalDocumentResponse> getSplit(@PathVariable Long id, Authentication auth) {
+        UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        logger.info("User {} requesting split {}", userPrincipal.getUsername(), id);
+        meterRegistry.counter("api.split.get").increment();
+        Optional<OriginalDocument> docOpt = originalDocumentService.getById(id);
+        if (docOpt.isPresent() && docOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            return ResponseEntity.ok(OriginalDocumentResponse.fromEntity(docOpt.get()));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
     @GetMapping("/documents/{documentId}")
     public ResponseEntity<OriginalDocumentResponse> getDocument(@PathVariable Long documentId, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
@@ -71,6 +84,14 @@ public class SplitController {
     @PatchMapping("/split-parts/{id}")
     public ResponseEntity<SplitPartResponse> updateSplitPart(@PathVariable Long id, @Valid @RequestBody UpdateSplitPartRequest request, Authentication auth) {
         meterRegistry.counter("api.splitpart.update").increment();
+        SplitPart updated = splitPartService.updateSplitPart(id, request.getName(), request.getClassification(), request.getFilename());
+        return ResponseEntity.ok(SplitPartResponse.fromEntity(updated));
+    }
+
+    // Alias: Update document (split part) metadata
+    @PatchMapping("/document/{id}")
+    public ResponseEntity<SplitPartResponse> updateDocument(@PathVariable Long id, @Valid @RequestBody UpdateSplitPartRequest request, Authentication auth) {
+        meterRegistry.counter("api.document.update").increment();
         SplitPart updated = splitPartService.updateSplitPart(id, request.getName(), request.getClassification(), request.getFilename());
         return ResponseEntity.ok(SplitPartResponse.fromEntity(updated));
     }
@@ -97,6 +118,23 @@ public class SplitController {
             return ResponseEntity.ok().build();
         }
         logger.warn("Target splitPart {} not found", request.getTargetSplitPartId());
+        return ResponseEntity.notFound().build();
+    }
+
+    // Alias: Create document (split part) with page IDs and metadata
+    @PostMapping("/document")
+    public ResponseEntity<SplitPartResponse> createDocument(@Valid @RequestBody CreateSplitPartRequest request, Authentication auth) {
+        UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        meterRegistry.counter("api.document.create").increment();
+        Optional<OriginalDocument> docOpt = originalDocumentRepository.findById(request.getOriginalDocumentId());
+        if (docOpt.isPresent() && docOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            if (docOpt.get().getStatus() == OriginalDocument.Status.FINALIZED) {
+                return ResponseEntity.badRequest().body(null);
+            }
+            List<Page> pages = pageRepository.findByIdIn(request.getPageIds());
+            SplitPart sp = splitPartService.createSplitPart(docOpt.get(), request.getName(), request.getClassification(), request.getFilename(), pages);
+            return ResponseEntity.ok(SplitPartResponse.fromEntity(sp));
+        }
         return ResponseEntity.notFound().build();
     }
 
@@ -132,6 +170,24 @@ public class SplitController {
         return ResponseEntity.ok().build();
     }
 
+    // Alias: Delete document (split part)
+    @DeleteMapping("/document/{id}")
+    public ResponseEntity<?> deleteDocument(@PathVariable Long id, @RequestParam(value = "reassignTo", required = false) Long reassignTo, Authentication auth) {
+        meterRegistry.counter("api.document.delete").increment();
+        return deleteSplitPart(id, reassignTo, auth);
+    }
+
+    @PostMapping("/split-parts/{id}/finalize")
+    public ResponseEntity<SplitPartResponse> finalizeSplitPart(@PathVariable Long id, Authentication auth) {
+        UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
+        meterRegistry.counter("api.splitpart.finalize").increment();
+        Optional<SplitPart> spOpt = splitPartRepository.findById(id);
+        if (spOpt.isPresent() && spOpt.get().getOriginalDocument().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            SplitPart finalized = splitPartService.finalizeSplitPart(id);
+            return ResponseEntity.ok(SplitPartResponse.fromEntity(finalized));
+        }
+        return ResponseEntity.notFound().build();
+    }
     @PostMapping("/documents/{documentId}/finalize")
     public ResponseEntity<OriginalDocumentResponse> finalizeDocument(@PathVariable Long documentId, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
