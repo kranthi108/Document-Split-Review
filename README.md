@@ -19,7 +19,7 @@ cd ascend-doc-split-review
 
 ### Core APIs
 - GET `/api/documents/{documentId}` → original document with split parts and pages
-- GET `/api/splits/{id}` → alias for fetching an original document (split) by id
+- GET `/api/splits/{id}` → get a split part by id
 - POST `/api/split-parts` → create a new split part from page IDs of the same original document
 - POST `/api/document` → alias for creating a split part (document) from page IDs
 - PATCH `/api/split-parts/{id}` → update split part metadata

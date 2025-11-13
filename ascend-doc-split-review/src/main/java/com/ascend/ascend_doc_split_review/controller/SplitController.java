@@ -54,15 +54,15 @@ public class SplitController {
     @Autowired
     private MeterRegistry meterRegistry;
 
-    // Alias: Get split (original document) by id
+    // Get split (split part) by id
     @GetMapping("/splits/{id}")
-    public ResponseEntity<OriginalDocumentResponse> getSplit(@PathVariable Long id, Authentication auth) {
+    public ResponseEntity<SplitPartResponse> getSplit(@PathVariable Long id, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
         logger.info("User {} requesting split {}", userPrincipal.getUsername(), id);
         meterRegistry.counter("api.split.get").increment();
-        Optional<OriginalDocument> docOpt = originalDocumentService.getById(id);
-        if (docOpt.isPresent() && docOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
-            return ResponseEntity.ok(OriginalDocumentResponse.fromEntity(docOpt.get()));
+        Optional<SplitPart> spOpt = splitPartRepository.findById(id);
+        if (spOpt.isPresent() && spOpt.get().getOriginalDocument().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            return ResponseEntity.ok(SplitPartResponse.fromEntity(spOpt.get()));
         }
         return ResponseEntity.notFound().build();
     }
