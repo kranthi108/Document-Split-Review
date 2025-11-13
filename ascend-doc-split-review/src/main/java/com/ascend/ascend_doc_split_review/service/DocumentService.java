@@ -26,13 +26,13 @@ public class DocumentService {
         if (split.getStatus() == Split.Status.FINALIZED) {
             throw new IllegalArgumentException("Cannot modify a finalized split");
         }
-        // Validate all pages belong to the same split (via their current documents)
+        // Validate: if a page is already assigned to a document, it must be within the same split
+        // Allow brand-new pages (no document yet) during initial creation.
         for (Page page : pages) {
-            if (page.getDocument() == null || page.getDocument().getSplit() == null) {
-                throw new IllegalArgumentException("Page " + page.getId() + " is not assigned to any document");
-            }
-            if (!page.getDocument().getSplit().getId().equals(split.getId())) {
-                throw new IllegalArgumentException("All pages must belong to the same split");
+            if (page.getDocument() != null && page.getDocument().getSplit() != null) {
+                if (!page.getDocument().getSplit().getId().equals(split.getId())) {
+                    throw new IllegalArgumentException("All pages must belong to the same split");
+                }
             }
         }
         Document document = new Document();
