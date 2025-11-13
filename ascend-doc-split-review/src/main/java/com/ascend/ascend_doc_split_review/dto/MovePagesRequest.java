@@ -11,5 +11,5 @@ public class MovePagesRequest {
     @NotEmpty
     private List<Long> pageIds;
     @NotNull
-    private Long targetDocumentId;
+    private Long targetSplitPartId;
 }

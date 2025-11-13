@@ -16,8 +16,8 @@ public class Page {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id")
-    private Document document;
+    @JoinColumn(name = "split_part_id")
+    private SplitPart splitPart;
 
     @Column(name = "page_number", nullable = false)
     private Integer pageNumber;

@@ -1,9 +1,9 @@
 package com.ascend.ascend_doc_split_review.service;
 
-import com.ascend.ascend_doc_split_review.entity.Document;
+import com.ascend.ascend_doc_split_review.entity.SplitPart;
 import com.ascend.ascend_doc_split_review.entity.Page;
-import com.ascend.ascend_doc_split_review.entity.Split;
-import com.ascend.ascend_doc_split_review.repository.DocumentRepository;
+import com.ascend.ascend_doc_split_review.entity.OriginalDocument;
+import com.ascend.ascend_doc_split_review.repository.SplitPartRepository;
 import com.ascend.ascend_doc_split_review.repository.PageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,57 +20,57 @@ public class PageService {
     private PageRepository pageRepository;
 
     @Autowired
-    private DocumentRepository documentRepository;
+    private SplitPartRepository splitPartRepository;
 
-    public Page createPage(Document document, Integer pageNumber, String content) {
+    public Page createPage(SplitPart splitPart, Integer pageNumber, String content) {
         Page page = new Page();
-        page.setDocument(document);
+        page.setSplitPart(splitPart);
         page.setPageNumber(pageNumber);
         page.setContent(content);
         return pageRepository.save(page);
     }
 
-    public List<Page> getPagesByDocument(Long documentId) {
-        return pageRepository.findByDocumentId(documentId);
+    public List<Page> getPagesBySplitPart(Long splitPartId) {
+        return pageRepository.findBySplitPartId(splitPartId);
     }
 
     // Better method
     @Transactional
-    public void movePagesToDocument(List<Long> pageIds, Document targetDocument) {
-        if (targetDocument.getSplit().getStatus() == Split.Status.FINALIZED) {
-            throw new IllegalArgumentException("Cannot modify a finalized split");
+    public void movePagesToSplitPart(List<Long> pageIds, SplitPart targetSplitPart) {
+        if (targetSplitPart.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
+            throw new IllegalArgumentException("Cannot modify a finalized document");
         }
         List<Page> pages = pageRepository.findByIdIn(pageIds);
         if (pages.isEmpty()) {
             return;
         }
         // Group pages by their current source document
-        Map<Document, List<Page>> bySourceDoc = pages.stream()
-                .collect(Collectors.groupingBy(Page::getDocument));
-        for (Map.Entry<Document, List<Page>> entry : bySourceDoc.entrySet()) {
-            Document sourceDoc = entry.getKey();
-            if (sourceDoc == null) {
+        Map<SplitPart, List<Page>> bySource = pages.stream()
+                .collect(Collectors.groupingBy(Page::getSplitPart));
+        for (Map.Entry<SplitPart, List<Page>> entry : bySource.entrySet()) {
+            SplitPart source = entry.getKey();
+            if (source == null) {
                 throw new IllegalArgumentException("All pages must belong to a document");
             }
             // Same split constraint
-            if (!sourceDoc.getSplit().getId().equals(targetDocument.getSplit().getId())) {
-                throw new IllegalArgumentException("Cannot move pages across different splits (must belong to the same original document)");
+            if (!source.getOriginalDocument().getId().equals(targetSplitPart.getOriginalDocument().getId())) {
+                throw new IllegalArgumentException("Cannot move pages across different original documents");
             }
-            if (sourceDoc.getSplit().getStatus() == Split.Status.FINALIZED) {
-                throw new IllegalArgumentException("Cannot modify a finalized split");
+            if (source.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
+                throw new IllegalArgumentException("Cannot modify a finalized document");
             }
         }
         // Perform move
         for (Page page : pages) {
-            page.setDocument(targetDocument);
+            page.setSplitPart(targetSplitPart);
             pageRepository.save(page);
         }
         // Remove any now-empty source documents
-        for (Document sourceDoc : bySourceDoc.keySet()) {
-            if (!sourceDoc.getId().equals(targetDocument.getId())) {
-                long remaining = pageRepository.findByDocumentId(sourceDoc.getId()).size();
+        for (SplitPart source : bySource.keySet()) {
+            if (!source.getId().equals(targetSplitPart.getId())) {
+                long remaining = pageRepository.findBySplitPartId(source.getId()).size();
                 if (remaining == 0) {
-                    documentRepository.delete(sourceDoc);
+                    splitPartRepository.delete(source);
                 }
             }
         }

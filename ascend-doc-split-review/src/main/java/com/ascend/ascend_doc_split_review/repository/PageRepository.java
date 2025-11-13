@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface PageRepository extends JpaRepository<Page, Long> {
-    List<Page> findByDocumentId(Long documentId);
+    List<Page> findBySplitPartId(Long splitPartId);
     List<Page> findByIdIn(List<Long> ids);
 }

@@ -8,25 +8,27 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "splits")
+@Table(name = "split_parts")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Split {
+public class SplitPart {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "original_document_id", nullable = false)
+    private OriginalDocument originalDocument;
 
-    @Column(name = "original_filename", nullable = false)
-    private String originalFilename;
-
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Status status = Status.PENDING;
+    private String name;
+
+    @Column(nullable = false)
+    private String classification;
+
+    @Column(nullable = false)
+    private String filename;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -34,10 +36,13 @@ public class Split {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "split", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Document> documents;
+    @OneToMany(mappedBy = "splitPart", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Page> pages;
 
-    public enum Status {
-        PENDING, FINALIZED
-    }
+    @Column(name = "from_page")
+    private Integer fromPage;
+
+    @Column(name = "to_page")
+    private Integer toPage;
 }
+

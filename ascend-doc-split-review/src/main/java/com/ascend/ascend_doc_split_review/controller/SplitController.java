@@ -1,16 +1,16 @@
 package com.ascend.ascend_doc_split_review.controller;
 
 import com.ascend.ascend_doc_split_review.dto.*;
-import com.ascend.ascend_doc_split_review.entity.Document;
+import com.ascend.ascend_doc_split_review.entity.SplitPart;
 import com.ascend.ascend_doc_split_review.entity.Page;
-import com.ascend.ascend_doc_split_review.entity.Split;
-import com.ascend.ascend_doc_split_review.repository.SplitRepository;
-import com.ascend.ascend_doc_split_review.repository.DocumentRepository;
+import com.ascend.ascend_doc_split_review.entity.OriginalDocument;
+import com.ascend.ascend_doc_split_review.repository.OriginalDocumentRepository;
+import com.ascend.ascend_doc_split_review.repository.SplitPartRepository;
 import com.ascend.ascend_doc_split_review.repository.PageRepository;
 import com.ascend.ascend_doc_split_review.security.UserPrincipal;
-import com.ascend.ascend_doc_split_review.service.DocumentService;
+import com.ascend.ascend_doc_split_review.service.SplitPartService;
 import com.ascend.ascend_doc_split_review.service.PageService;
-import com.ascend.ascend_doc_split_review.service.SplitService;
+import com.ascend.ascend_doc_split_review.service.OriginalDocumentService;
 import com.ascend.ascend_doc_split_review.service.MockDownloadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,19 +31,19 @@ public class SplitController {
     private static final Logger logger = LoggerFactory.getLogger(SplitController.class);
 
     @Autowired
-    private SplitService splitService;
+    private OriginalDocumentService originalDocumentService;
 
     @Autowired
-    private DocumentService documentService;
+    private SplitPartService splitPartService;
 
     @Autowired
     private PageService pageService;
 
     @Autowired
-    private SplitRepository splitRepository;
+    private OriginalDocumentRepository originalDocumentRepository;
 
     @Autowired
-    private DocumentRepository documentRepository;
+    private SplitPartRepository splitPartRepository;
 
     @Autowired
     private PageRepository pageRepository;
@@ -54,93 +54,92 @@ public class SplitController {
     @Autowired
     private MeterRegistry meterRegistry;
 
-    @GetMapping("/splits/{splitId}")
-    public ResponseEntity<SplitResponse> getSplit(@PathVariable Long splitId, Authentication auth) {
+    @GetMapping("/documents/{documentId}")
+    public ResponseEntity<OriginalDocumentResponse> getDocument(@PathVariable Long documentId, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
-        logger.info("User {} requesting split {}", userPrincipal.getUsername(), splitId);
-        meterRegistry.counter("api.split.get").increment();
-        Optional<Split> splitOpt = splitService.getSplitById(splitId);
-        if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
-            logger.info("Split {} retrieved successfully", splitId);
-            return ResponseEntity.ok(SplitResponse.fromEntity(splitOpt.get()));
+        logger.info("User {} requesting document {}", userPrincipal.getUsername(), documentId);
+        meterRegistry.counter("api.document.get").increment();
+        Optional<OriginalDocument> docOpt = originalDocumentService.getById(documentId);
+        if (docOpt.isPresent() && docOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            logger.info("Document {} retrieved successfully", documentId);
+            return ResponseEntity.ok(OriginalDocumentResponse.fromEntity(docOpt.get()));
         }
-        logger.warn("Split {} not found or access denied for user {}", splitId, userPrincipal.getUsername());
+        logger.warn("Document {} not found or access denied for user {}", documentId, userPrincipal.getUsername());
         return ResponseEntity.notFound().build();
     }
 
-    @PatchMapping("/documents/{id}")
-    public ResponseEntity<DocumentResponse> updateDocument(@PathVariable Long id, @Valid @RequestBody UpdateDocumentRequest request, Authentication auth) {
-        // Assuming authorization check - user owns the split
-        meterRegistry.counter("api.document.update").increment();
-        Document updated = documentService.updateDocument(id, request.getName(), request.getClassification(), request.getFilename());
-        return ResponseEntity.ok(DocumentResponse.fromEntity(updated));
+    @PatchMapping("/split-parts/{id}")
+    public ResponseEntity<SplitPartResponse> updateSplitPart(@PathVariable Long id, @Valid @RequestBody UpdateSplitPartRequest request, Authentication auth) {
+        meterRegistry.counter("api.splitpart.update").increment();
+        SplitPart updated = splitPartService.updateSplitPart(id, request.getName(), request.getClassification(), request.getFilename());
+        return ResponseEntity.ok(SplitPartResponse.fromEntity(updated));
     }
 
     @PostMapping("/pages/move")
     public ResponseEntity<?> movePages(@Valid @RequestBody MovePagesRequest request, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
-        logger.info("User {} moving pages {} to document {}", userPrincipal.getUsername(), request.getPageIds(), request.getTargetDocumentId());
+        logger.info("User {} moving pages {} to splitPart {}", userPrincipal.getUsername(), request.getPageIds(), request.getTargetSplitPartId());
         meterRegistry.counter("api.pages.move").increment();
-        Optional<Document> targetDocOpt = documentRepository.findById(request.getTargetDocumentId());
-        if (targetDocOpt.isPresent()) {
-            Document targetDoc = targetDocOpt.get();
+        Optional<SplitPart> targetOpt = splitPartRepository.findById(request.getTargetSplitPartId());
+        if (targetOpt.isPresent()) {
+            SplitPart target = targetOpt.get();
             // Ownership check
-            if (!targetDoc.getSplit().getUser().getId().equals(userPrincipal.getUser().getId())) {
-                logger.warn("Access denied for user {} to target document {}", userPrincipal.getUsername(), targetDoc.getId());
+            if (!target.getOriginalDocument().getUser().getId().equals(userPrincipal.getUser().getId())) {
+                logger.warn("Access denied for user {} to target splitPart {}", userPrincipal.getUsername(), target.getId());
                 return ResponseEntity.status(403).build();
             }
-            if (targetDoc.getSplit().getStatus() == Split.Status.FINALIZED) {
-                logger.warn("Attempt to modify finalized split {}", targetDoc.getSplit().getId());
-                return ResponseEntity.badRequest().body("Cannot modify a finalized split");
+            if (target.getOriginalDocument().getStatus() == OriginalDocument.Status.FINALIZED) {
+                logger.warn("Attempt to modify finalized document {}", target.getOriginalDocument().getId());
+                return ResponseEntity.badRequest().body("Cannot modify a finalized document");
             }
-            pageService.movePagesToDocument(request.getPageIds(), targetDoc);
+            pageService.movePagesToSplitPart(request.getPageIds(), target);
             logger.info("Pages moved successfully");
             return ResponseEntity.ok().build();
         }
-        logger.warn("Target document {} not found", request.getTargetDocumentId());
+        logger.warn("Target splitPart {} not found", request.getTargetSplitPartId());
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping("/documents")
-    public ResponseEntity<DocumentResponse> createDocument(@Valid @RequestBody CreateDocumentRequest request, Authentication auth) {
+    @PostMapping("/split-parts")
+    public ResponseEntity<SplitPartResponse> createSplitPart(@Valid @RequestBody CreateSplitPartRequest request, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
-        meterRegistry.counter("api.document.create").increment();
-        Optional<Split> splitOpt = splitRepository.findById(request.getSplitId());
-        if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
-            if (splitOpt.get().getStatus() == Split.Status.FINALIZED) {
+        meterRegistry.counter("api.splitpart.create").increment();
+        Optional<OriginalDocument> docOpt = originalDocumentRepository.findById(request.getOriginalDocumentId());
+        if (docOpt.isPresent() && docOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            if (docOpt.get().getStatus() == OriginalDocument.Status.FINALIZED) {
                 return ResponseEntity.badRequest().body(null);
             }
             List<Page> pages = pageRepository.findByIdIn(request.getPageIds());
-            Document doc = documentService.createDocument(splitOpt.get(), request.getName(), request.getClassification(), request.getFilename(), pages);
-            return ResponseEntity.ok(DocumentResponse.fromEntity(doc));
+            SplitPart sp = splitPartService.createSplitPart(docOpt.get(), request.getName(), request.getClassification(), request.getFilename(), pages);
+            return ResponseEntity.ok(SplitPartResponse.fromEntity(sp));
         }
         return ResponseEntity.notFound().build();
     }
 
-    @DeleteMapping("/documents/{id}")
-    public ResponseEntity<?> deleteDocument(@PathVariable Long id, @RequestParam(value = "reassignTo", required = false) Long reassignTo, Authentication auth) {
-        meterRegistry.counter("api.document.delete").increment();
+    @DeleteMapping("/split-parts/{id}")
+    public ResponseEntity<?> deleteSplitPart(@PathVariable Long id, @RequestParam(value = "reassignTo", required = false) Long reassignTo, Authentication auth) {
+        meterRegistry.counter("api.splitpart.delete").increment();
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
-        Optional<Document> docOpt = documentRepository.findById(id);
-        if (docOpt.isEmpty()) {
+        Optional<SplitPart> spOpt = splitPartRepository.findById(id);
+        if (spOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
-        Document doc = docOpt.get();
-        if (!doc.getSplit().getUser().getId().equals(userPrincipal.getUser().getId())) {
+        SplitPart sp = spOpt.get();
+        if (!sp.getOriginalDocument().getUser().getId().equals(userPrincipal.getUser().getId())) {
             return ResponseEntity.status(403).build();
         }
-        documentService.deleteDocument(id, reassignTo);
+        splitPartService.deleteSplitPart(id, reassignTo);
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/splits/{splitId}/finalize")
-    public ResponseEntity<SplitResponse> finalizeSplit(@PathVariable Long splitId, Authentication auth) {
+    @PostMapping("/documents/{documentId}/finalize")
+    public ResponseEntity<OriginalDocumentResponse> finalizeDocument(@PathVariable Long documentId, Authentication auth) {
         UserPrincipal userPrincipal = (UserPrincipal) auth.getPrincipal();
-        meterRegistry.counter("api.split.finalize").increment();
-        Optional<Split> splitOpt = splitRepository.findById(splitId);
-        if (splitOpt.isPresent() && splitOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
-            Split finalized = splitService.finalizeSplit(splitId);
-            return ResponseEntity.ok(SplitResponse.fromEntity(finalized));
+        meterRegistry.counter("api.document.finalize").increment();
+        Optional<OriginalDocument> docOpt = originalDocumentRepository.findById(documentId);
+        if (docOpt.isPresent() && docOpt.get().getUser().getId().equals(userPrincipal.getUser().getId())) {
+            OriginalDocument finalized = originalDocumentService.finalizeDocument(documentId);
+            return ResponseEntity.ok(OriginalDocumentResponse.fromEntity(finalized));
         }
         return ResponseEntity.notFound().build();
     }

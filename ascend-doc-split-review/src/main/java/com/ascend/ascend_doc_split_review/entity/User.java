@@ -36,7 +36,7 @@ public class User {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Split> splits;
+    private List<OriginalDocument> originalDocuments;
 
     public enum Role {
         ACCOUNTANT

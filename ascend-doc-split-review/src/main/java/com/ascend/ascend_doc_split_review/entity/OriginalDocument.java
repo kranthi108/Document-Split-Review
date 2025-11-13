@@ -8,27 +8,25 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "documents")
+@Table(name = "original_documents")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Document {
+public class OriginalDocument {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "split_id", nullable = false)
-    private Split split;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(name = "original_filename", nullable = false)
+    private String originalFilename;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String classification;
-
-    @Column(nullable = false)
-    private String filename;
+    private Status status = Status.PENDING;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -36,13 +34,11 @@ public class Document {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Page> pages;
+    @OneToMany(mappedBy = "originalDocument", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<SplitPart> splitParts;
 
-    // Tracks original source page range this document initially represented
-    @Column(name = "source_from_page")
-    private Integer sourceFromPage;
-
-    @Column(name = "source_to_page")
-    private Integer sourceToPage;
+    public enum Status {
+        PENDING, FINALIZED
+    }
 }
+
