@@ -1,0 +1,249 @@
+{
+	"info": {
+		"_postman_id": "d2d9e1b9-6045-4c5e-8bf3-c8d3f995d2b9",
+		"name": "Assignment",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "35313581"
+	},
+	"item": [
+		{
+			"name": "Register",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"user2\",\n    \"password\": \"password2\",\n    \"email\": \"user2@example.com\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/auth/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"auth",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Metrics",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\"username\":\"demo\",\"password\":\"password\"}\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/actuator/metrics/api.split.get",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"actuator",
+						"metrics",
+						"api.split.get"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Document",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJkZW1vIiwiaWF0IjoxNzYzMDM1OTM2LCJleHAiOjE3NjMxMjIzMzZ9.S9wWBiKV50upIwkomO87N6Bm_l_TonfMfLRR8i2Zg7Fkc7d33-JN12hQf9hyP3wd"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/api/splits/2",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"splits",
+						"2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Download",
+			"request": {
+				"method": "PATCH",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJkZW1vIiwiaWF0IjoxNzYzMDI5Nzc0LCJleHAiOjE3NjMxMTYxNzR9.Lf1ppWIUV2CyoqQ7K76RC3Lx5l0mLr5eKLpqkbcIIAtDUHJ8vzOnGYo-a2ZJplqo"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"filename\": \"bundle1.pdf\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/documents/1/download",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"documents",
+						"1",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Move Doc",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJkZW1vIiwiaWF0IjoxNzYzMDI5Nzc0LCJleHAiOjE3NjMxMTYxNzR9.Lf1ppWIUV2CyoqQ7K76RC3Lx5l0mLr5eKLpqkbcIIAtDUHJ8vzOnGYo-a2ZJplqo"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"pageIds\": [3],\n  \"targetSplitPartId\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/pages/move",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"pages",
+						"move"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Doc - 1",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJkZW1vIiwiaWF0IjoxNzYzMDI5Nzc0LCJleHAiOjE3NjMxMTYxNzR9.Lf1ppWIUV2CyoqQ7K76RC3Lx5l0mLr5eKLpqkbcIIAtDUHJ8vzOnGYo-a2ZJplqo"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"originalDocumentId\": 2,\n  \"name\": \"Form 81C\",\n  \"classification\": \"81C\",\n  \"filename\": \"client_81c.pdf\",\n  \"pageIds\": [1,2,3,4,5,6,7]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/api/document",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"document"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJkZW1vIiwiaWF0IjoxNzYzMDM1OTM2LCJleHAiOjE3NjMxMjIzMzZ9.S9wWBiKV50upIwkomO87N6Bm_l_TonfMfLRR8i2Zg7Fkc7d33-JN12hQf9hyP3wd"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8080/api/documents/1",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"api",
+						"documents",
+						"1"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
